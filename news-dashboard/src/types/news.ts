@@ -8,6 +8,7 @@ export interface Article {
   summary?: string;
   sentiment_label?: 'POSITIVE' | 'NEGATIVE';
   sentiment_score?: number;
+  category?: string;
 }
 
 export interface SentimentStats {
@@ -15,4 +16,5 @@ export interface SentimentStats {
   positive_count: number;
   negative_count: number;
   unprocessed_count: number;
+  category_stats?: Record<string, number>;
 }

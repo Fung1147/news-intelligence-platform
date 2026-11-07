@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Bot, Calendar, Building2 } from 'lucide-react';
+import { ExternalLink, Bot, Calendar, Building2, Tag } from 'lucide-react';
 import type { Article } from '../types/news';
 
 interface ArticleCardProps {
@@ -20,6 +20,16 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({ article }) => {
             <Building2 className="w-3.5 h-3.5 text-slate-600" />
             {article.publisher || 'ข่าวทั่วไป'}
           </span>
+
+          {/* Category Tag */}
+          {article.category && (
+            <span className="flex items-center gap-1 bg-purple-100 border border-slate-900 px-2.5 py-0.5 rounded-md text-purple-900 font-bold">
+              <Tag className="w-3 h-3 text-purple-600" />
+              {article.category || "General"}
+            </span>
+          )}
+
+         {/* Date */}
           <span className="flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5" />
             {article.published_at ? new Date(article.published_at).toLocaleDateString('th-TH') : '-'}

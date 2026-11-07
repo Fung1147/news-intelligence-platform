@@ -25,6 +25,6 @@ if __name__ == "__main__":
 
     # AI ทดสอบทีละ 10 ข่าว
     print("\nเริ่มประมวลผลด้วย AI Module...")
-    process_unprocessed_articles(limit=10)    
+    process_unprocessed_articles(limit=20)    
 
     print("\nทำงานเสร็จสิ้นสมบูรณ์!")

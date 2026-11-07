@@ -13,8 +13,8 @@ def run_pipeline():
 if __name__ == "__main__":
     scheduler = BackgroundScheduler()
     
-    # ตั้งเวลาให้รันฟังก์ชัน run_pipeline ทุกๆ 1 ชั่วโมง
-    scheduler.add_job(run_pipeline, 'interval', hours=1)
+    # ตั้งเวลาให้รันฟังก์ชัน run_pipeline ทุกๆ n ชั่วโมง
+    scheduler.add_job(run_pipeline, 'interval', minutes=10)
     
     # รันทันที 1 รอบแรกตอนเปิดโปรแกรม
     run_pipeline()

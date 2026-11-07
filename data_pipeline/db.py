@@ -24,6 +24,8 @@ class NewsArticle(Base):
     sentiment_label = Column(String, nullable=True)  # POSITIVE / NEGATIVE
     sentiment_score = Column(Float, nullable=True)  # ค่าความมั่นใจ 0.0 - 1.0
 
+    category = Column(String, nullable=True) # add
+
 def init_db():
     """สร้าง Table ใน PostgreSQL หากยังไม่มี"""
     Base.metadata.create_all(bind=engine)

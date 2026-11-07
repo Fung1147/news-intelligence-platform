@@ -1,7 +1,8 @@
-venv/ 
-news-dashboard/node_modules/ 
-__pycache__/ 
-*.pyc 
-.env 
+venv/
+news-dashboard/node_modules/
+__pycache__/
+*.pyc
+.env
 news-dashboard/dist/
 news-dashboard/dist-ssr/
+onnx_models/

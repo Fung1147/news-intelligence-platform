@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import { getArticles, getStats } from "./api/client";
 import type { Article, SentimentStats } from "./types/news";
 import { Header } from "./components/Header";
 import { StatCard } from "./components/StatCard";
 import { ArticleCard } from "./components/ArticleCard";
+import { CategoryFilter } from "./components/CategoryFilter";
 
 export function App() {
   const [articles, setArticles] = useState<Article[]>([]);
@@ -11,13 +12,22 @@ export function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filter, setFilter] = useState<"ALL" | "POSITIVE" | "NEGATIVE">("ALL");
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+
+  const CATEGORIES = [
+    "ALL",
+    "Tech & AI",
+    "Finance & Economy",
+    "Politics & Law",
+    "General",
+  ];
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [resArticles, resStats] = await Promise.all([
-        axios.get<Article[]>("http://127.0.0.1:8000/articles"),
-        axios.get<SentimentStats>("http://127.0.0.1:8000/stats"),
+        getArticles(),
+        getStats(),
       ]);
       setArticles(resArticles.data);
       setStats(resStats.data);
@@ -34,13 +44,21 @@ export function App() {
 
   // กรองข่าวจาก Search Term และ Filter Tag
   const filteredArticles = articles.filter((a) => {
+    // ค้นหาข้อความ
     const matchesSearch =
       a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (a.summary && a.summary.toLowerCase().includes(searchTerm.toLowerCase()));
     if (!matchesSearch) return false;
 
-    if (filter === "POSITIVE") return a.sentiment_label === "POSITIVE";
-    if (filter === "NEGATIVE") return a.sentiment_label === "NEGATIVE";
+    // กรอง Sentiment (POSITIVE/NEGATIVE)
+    if (filter === "POSITIVE" && a.sentiment_label !== "POSITIVE") return false;
+    if (filter === "NEGATIVE" && a.sentiment_label !== "NEGATIVE") return false;
+
+    // กรอง Category
+    if (selectedCategory !== "ALL" && a.category !== selectedCategory) {
+      return false;
+    }
+
     return true;
   });
 
@@ -102,6 +120,13 @@ export function App() {
             </button>
           ))}
         </div>
+
+        {/* CategoryFilter Component */}
+        <CategoryFilter
+          categories={CATEGORIES}
+          selectedCategory={selectedCategory}
+          onSelectCategory={setSelectedCategory}
+        />
 
         {/* ArticleCard */}
         <div>
