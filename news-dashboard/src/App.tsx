@@ -1,18 +1,27 @@
 import { useEffect, useState } from "react";
-import { getArticles, getStats } from "./api/client";
+import { getArticles, getStats, getGraphData } from "./api/client";
 import type { Article, SentimentStats } from "./types/news";
 import { Header } from "./components/Header";
 import { StatCard } from "./components/StatCard";
 import { ArticleCard } from "./components/ArticleCard";
 import { CategoryFilter } from "./components/CategoryFilter";
+import {
+  EntityGraphContainer,
+  type GraphData,
+} from "./components/KnowledgeGraph/EntityGraphContainer";
 
 export function App() {
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [articles, setArticles] = useState<any[]>([]);
   const [stats, setStats] = useState<SentimentStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filter, setFilter] = useState<"ALL" | "POSITIVE" | "NEGATIVE">("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+
+  const [graphData, setGraphData] = useState<GraphData>({
+    nodes: [],
+    links: [],
+  });
 
   const CATEGORIES = [
     "ALL",
@@ -22,15 +31,28 @@ export function App() {
     "General",
   ];
 
+  // แก้ไข handler รับข้อมูลจาก Graph
+  const handleSelectEntity = (node: any, newsData?: any[]) => {
+    if (node) {
+      setSearchTerm(node.label || node.id || "");
+    }
+
+    if (newsData && newsData.length > 0) {
+      setArticles(newsData);
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resArticles, resStats] = await Promise.all([
+      const [resArticles, resStats, resGraph] = await Promise.all([
         getArticles(),
         getStats(),
+        getGraphData(),
       ]);
       setArticles(resArticles.data);
       setStats(resStats.data);
+      setGraphData(resGraph.data);
     } catch (err) {
       console.error("Fetch Error:", err);
     } finally {
@@ -42,14 +64,8 @@ export function App() {
     fetchData();
   }, []);
 
-  // กรองข่าวจาก Search Term และ Filter Tag
+  // ปรับ logic การ filter ข่าว
   const filteredArticles = articles.filter((a) => {
-    // ค้นหาข้อความ
-    const matchesSearch =
-      a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (a.summary && a.summary.toLowerCase().includes(searchTerm.toLowerCase()));
-    if (!matchesSearch) return false;
-
     // กรอง Sentiment (POSITIVE/NEGATIVE)
     if (filter === "POSITIVE" && a.sentiment_label !== "POSITIVE") return false;
     if (filter === "NEGATIVE" && a.sentiment_label !== "NEGATIVE") return false;
@@ -67,11 +83,19 @@ export function App() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <Header
-          onRefresh={fetchData}
+          onRefresh={() => {
+            setSearchTerm("");
+            fetchData();
+          }}
           loading={loading}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
         />
+        <EntityGraphContainer
+          graphData={graphData}
+          onSelectEntity={handleSelectEntity}
+        />
+
         {/* Stats Grid 4 ช่อง */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-6">
           <StatCard
@@ -129,10 +153,10 @@ export function App() {
         />
 
         {/* ArticleCard */}
-        <div>
+        <div className="space-y-4">
           {filteredArticles.length > 0 ? (
-            filteredArticles.map((item) => (
-              <ArticleCard key={item.id} article={item} />
+            filteredArticles.map((item, index) => (
+              <ArticleCard key={item.url || index} article={item} />
             ))
           ) : (
             <div className="text-center p-8 bg-white rounded-2xl border-2 border-slate-900 text-slate-500 font-bold text-sm">

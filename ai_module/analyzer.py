@@ -1,14 +1,15 @@
 import os
 import sys
-import torch
 import onnxruntime as ort
+import spacy
+from collections import Counter
 from optimum.onnxruntime import ORTModelForSequenceClassification, ORTModelForSeq2SeqLM
-from data_pipeline.db import NewsArticle, SessionLocal
+from data_pipeline.db import NewsArticle, SessionLocal, Entity
 from transformers import (
-    AutoModelForSeq2SeqLM,
     AutoTokenizer,
     pipeline,
 )
+
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data_pipeline.db import NewsArticle, SessionLocal
@@ -68,6 +69,54 @@ else:
 
 zero_shot_pipeline = pipeline("zero-shot-classification", model=zero_shot_model, tokenizer=zero_shot_tokenizer)
 
+# โหลด spacy model สกัด NER และ Keywords
+try:
+    nlp = spacy.load("en_core_web_sm")
+except Exception:
+    print("กำลังดาวน์โหลด spacy model...")
+    import subprocess
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+    nlp = spacy.load("en_core_web_sm")
+
+def extract_ner_and_keywords(text: str, max_keywords: int = 5):
+
+    if not text:
+        return [], ""
+
+    doc = nlp(text)
+
+    # สกัด Entities (เน้นเฉพาะ บุคคล, องค์กร/บริษัท, สถานที่)
+    allowed_types = {"PERSON", "ORG", "GPE"}
+    entities = []
+    seen_entities = set()
+
+    for ent in doc.ents:
+        clean_name = ent.text.strip()
+        # กรองเอาเฉพาะประเภทที่ต้องการ และตัดคำขยะสั้นๆ ออก
+        if ent.label_ in allowed_types and len(clean_name) > 2:
+            entity_key = (clean_name.lower(), ent.label_)
+            if entity_key not in seen_entities:
+                seen_entities.add(entity_key)
+                entities.append({
+                    "name": clean_name,
+                    "type": ent.label_
+                })
+
+    # สกัด Keywords (ดึงคำนาม/คำคุณศัพท์ที่เจอบ่อย และไม่ใช่ Stop words)
+    keywords_list = []
+    for token in doc:
+        if (token.pos_ in {"NOUN", "PROPN", "ADJ"} 
+            and not token.is_stop 
+            and len(token.text) > 3 
+            and token.is_alpha):
+            keywords_list.append(token.lemma_.capitalize())
+
+    # สรุปเอาคีย์เวิร์ดที่ถี่ที่สุด top N ตัว
+    most_common = [word for word, count in Counter(keywords_list).most_common(max_keywords)]
+    keywords_str = ", ".join(most_common)
+
+    return entities, keywords_str
+
 def analyze_article(title: str = "", content: str = "") -> dict:
     """ประมวลผล Sentiment และ สรุปข่าว"""
     # --- 1. Sentiment Analysis ---
@@ -92,7 +141,7 @@ def analyze_article(title: str = "", content: str = "") -> dict:
 
     # --- 2. Summarization ---
     summary_text = ""
-    if len(content.split()) > 30:
+    if len(content_text.split()) > 30:
         inputs = summarizer_tokenizer(
             truncated_text,
             max_length=1024,
@@ -123,14 +172,19 @@ def analyze_article(title: str = "", content: str = "") -> dict:
     )
     predicted_category = category_result["labels"][0]
 
+    # NER & Keyword Extraction (เพิ่มใหม่)
+    entities, keywords = extract_ner_and_keywords(truncated_text)
+
     return {
         "sentiment_label": label,
         "sentiment_score": score,
         "summary": summary_text,
         "category": predicted_category,
+        "keywords": keywords,
+        "entities": entities,
     }
 
-def process_unprocessed_articles(limit: int = 20):
+def process_unprocessed_articles(limit: int = 100):
     """ดึงข่าวที่ยังไม่มีผล AI จาก DB มาประมวลผล"""
     db = SessionLocal()
     try:
@@ -160,14 +214,34 @@ def process_unprocessed_articles(limit: int = 20):
             article.sentiment_label = ai_results["sentiment_label"]
             article.sentiment_score = ai_results["sentiment_score"]
             article.summary = ai_results["summary"]
-            article.category = ai_results["category"]  # เซฟหมวดหมู่ลง DB
+            article.category = ai_results["category"]
+
+            # Keywords (New feature)
+            article.keywords = ai_results.get("keywords", "")
+
+            entities_data = ai_results.get("entities", [])
+            for ent_data in entities_data:
+                ent_name = ent_data["name"].strip()
+                ent_type = ent_data["type"].strip()
+
+                # ค้นหา Entity เดิมใน Master Table หรือสร้างใหม่ถ้ายังไม่มี
+                entity_obj = db.query(Entity).filter(Entity.name == ent_name).first()
+                if not entity_obj:
+                    entity_obj = Entity(name=ent_name, entity_type=ent_type)
+                    db.add(entity_obj)
+
+                # ผูก Relationship (เช็กป้องกันการผูกซ้ำ)
+                if entity_obj not in article.entities:
+                    article.entities.append(entity_obj)
 
             print(f"   [Sentiment]: {ai_results['sentiment_label']} ({ai_results['sentiment_score']})")
             print(f"   [Category] : {ai_results['category']}")
+            print(f"   [Keywords] : {article.keywords}")
+            print(f"   [Entities] : {[e['name'] for e in entities_data]}")
             print(f"   [Summary]  : {ai_results['summary']}\n")
 
         db.commit()
-        print("ประมวลผลและบันทึกผล AI ลง Database เรียบร้อย!")
+        print("ประมวลผลและบันทึกผล AI (NER & Keywords) ลง Database เรียบร้อย!")
     except Exception as e:
         db.rollback()
         print(f"เกิดข้อผิดพลาด: {e}")

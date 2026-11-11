@@ -10,10 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/d3-force": "^3.0.10",
     "axios": "^1.21.0",
+    "d3-force": "^3.0.1",
     "lucide-react": "^1.70.0",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "react-force-graph-2d": "^1.29.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.5",

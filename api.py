@@ -1,8 +1,10 @@
 from typing import List, Optional
-from data_pipeline.db import NewsArticle, SessionLocal
-from fastapi import FastAPI, HTTPException
+from data_pipeline.db import NewsArticle, SessionLocal, get_knowledge_graph_data
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy import or_, func
+from sqlalchemy.orm import Session
 
 # เริ่มต้นสร้างตัวแปร FastAPI App
 app = FastAPI(
@@ -19,6 +21,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def categorize_text(title: str, summary: str = None) -> str:
     text = f"{title or ''} {summary or ''}".lower()
@@ -125,6 +134,43 @@ def get_sentiment_stats():
             "unprocessed_count": unprocessed,
             "category_stats": categories_count,
         }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Database query error: {str(e)}"
+        )
+    finally:
+        session.close()
+        
+@app.get("/api/v1/graph")
+def get_graph(limit: int = 40):
+    try:
+        data = get_knowledge_graph_data(limit=limit)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch graph data: {str(e)}")
+
+@app.get("/api/news/by-entity")
+def get_news_by_entity(
+    entity_name: str,
+    entity_type: Optional[str] = None,
+    limit: int = 20
+):
+    session = SessionLocal()
+    try:
+        clean_name = entity_name.strip().lower()
+
+        # ค้นหาข่าวที่มีคำว่า clean_name ปรากฏใน title หรือ content
+        query = session.query(NewsArticle).filter(
+            or_(
+                func.lower(NewsArticle.title).contains(clean_name),
+                func.lower(NewsArticle.content).contains(clean_name)
+            )
+        )
+
+        # หากต้องการกรอง sentiment เพิ่มเติมสามารถประยุกต์ใช้แบบโค้ดเดิมได้
+        articles = query.order_by(NewsArticle.published_at.desc()).limit(limit).all()
+        return articles
+
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Database query error: {str(e)}"
