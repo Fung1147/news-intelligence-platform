@@ -246,3 +246,65 @@ def process_unprocessed_articles(limit: int = 100):
         print(f"เกิดข้อผิดพลาด: {e}")
     finally:
         db.close()
+        
+def generate_entity_brief(entity_name: str, articles: list) -> list:
+    """
+    ใช้ Local ONNX Summarizer (distilbart-cnn-12-6) ร่วมกับการวิเคราะห์สถิติ
+    """
+    if not articles:
+        return ["No sufficient news articles available for analysis."]
+
+    # รวบรวมเนื้อหาข่าว (ใช้ summary ถ้ามี ไม่งั้นใช้ title) สูงสุด 15 ข่าวเพื่อไม่ให้เกิน 1024 tokens
+    texts = []
+    for a in articles[:15]:
+        content = a.get("summary") or a.get("title") or ""
+        if content.strip():
+            texts.append(content.strip())
+
+    combined_text = " ".join(texts)
+
+    # 2. ใช้โมเดล ONNX Summarizer สกัดใจความสำคัญรวม (Executive Summary)
+    ai_overview = ""
+    if combined_text:
+        try:
+            inputs = summarizer_tokenizer(
+                combined_text,
+                max_length=1024,
+                truncation=True,
+                return_tensors="pt"
+            )
+            summary_ids = summarizer_model.generate(
+                inputs["input_ids"],
+                num_beams=4,
+                min_length=40,
+                max_length=130,
+                early_stopping=True
+            )
+            ai_overview = summarizer_tokenizer.decode(summary_ids[0], skip_special_tokens=True)
+        except Exception as e:
+            print(f"Summarizer error: {e}")
+            ai_overview = texts[0] if texts else "Unable to generate summary."
+
+    # 3. วิเคราะห์หมวดหมู่หลัก (Dominant Category)
+    categories = [a.get("category") for a in articles if a.get("category")]
+    top_category = Counter(categories).most_common(1)[0][0] if categories else "General"
+
+    # 4. วิเคราะห์แนวโน้มอารมณ์ข่าวและพาดหัวเด่น (Sentiment & Key Driver)
+    pos_articles = [a for a in articles if a.get("sentiment_label") == "POSITIVE"]
+    neg_articles = [a for a in articles if a.get("sentiment_label") == "NEGATIVE"]
+
+    if len(neg_articles) > len(pos_articles):
+        dominant_driver = neg_articles[0].get("title", "")
+        sentiment_insight = f"Coverage leans negative ({len(neg_articles)}/{len(articles)} articles), primarily driven by reports such as: \"{dominant_driver}\""
+    elif len(pos_articles) > len(neg_articles):
+        dominant_driver = pos_articles[0].get("title", "")
+        sentiment_insight = f"Coverage leans positive ({len(pos_articles)}/{len(articles)} articles), highlighted by developments like: \"{dominant_driver}\""
+    else:
+        sentiment_insight = f"Coverage is balanced between positive and negative perspectives across {len(articles)} recent articles."
+
+    # ส่งกลับเป็น List 3 ประเด็นสำคัญ
+    return [
+        f"Key Developments: {ai_overview}",
+        f"Primary Focus Area: Majority of {entity_name}'s recent coverage is concentrated in '{top_category}'.",
+        f"Sentiment Driver: {sentiment_insight}"
+    ]

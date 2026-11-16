@@ -42,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onRefresh}
             disabled={loading}
-            className={`flex items-center gap-1.5 bg-sky-300 hover:bg-sky-400 active:translate-x-[1px] active:translate-y-[1px] text-slate-900 border-2 border-slate-900 px-3.5 py-1 rounded-full font-black text-xs shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all ${
+            className={`flex items-center gap-1.5 bg-sky-300 hover:bg-sky-400 active:translate-x-1px active:translate-y-1px text-slate-900 border-2 border-slate-900 px-3.5 py-1 rounded-full font-black text-xs shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all ${
               loading ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
             }`}
           >

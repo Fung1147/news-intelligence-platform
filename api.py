@@ -1,10 +1,11 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from data_pipeline.db import NewsArticle, SessionLocal, get_knowledge_graph_data
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
+from ai_module.brief_service import generate_entity_brief
 
 # เริ่มต้นสร้างตัวแปร FastAPI App
 app = FastAPI(
@@ -55,6 +56,10 @@ class ArticleResponse(BaseModel):
     category: Optional[str] = "General"
 
     model_config = {"from_attributes": True}
+    
+class BriefRequest(BaseModel):
+    entity_name: str
+    articles: List[Dict[str, Any]]
 
 # --- Endpoints ---
 
@@ -153,7 +158,7 @@ def get_graph(limit: int = 100):
 def get_news_by_entity(
     entity_name: str,
     entity_type: Optional[str] = None,
-    limit: int = 50
+    limit: int = 20
 ):
     session = SessionLocal()
     try:
@@ -177,3 +182,8 @@ def get_news_by_entity(
         )
     finally:
         session.close()
+        
+@app.post("/api/ai/brief")
+def get_entity_brief(req: BriefRequest):
+    brief_points = generate_entity_brief(req.entity_name, req.articles)
+    return {"brief": brief_points}

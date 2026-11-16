@@ -29,8 +29,15 @@ export const NewsFeedContainer: React.FC<NewsFeedContainerProps> = ({
   return (
     <div className="flex flex-col h-full">
       <EntityFocusBanner
-        selectedNode={selectedNode}
-        articles={articles}
+        selectedEntity={
+          typeof selectedNode === "string"
+            ? selectedNode
+            : selectedNode?.label ||
+              selectedNode?.name ||
+              selectedNode?.title ||
+              String(selectedNode?.id || "")
+        }
+        articles={filteredArticles}
         onClear={onClearNode}
       />
 
@@ -42,7 +49,7 @@ export const NewsFeedContainer: React.FC<NewsFeedContainerProps> = ({
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1 rounded-full text-xs font-black border border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all active:translate-x-[1px] active:translate-y-[1px] ${
+                className={`px-3 py-1 rounded-full text-xs font-black border border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] transition-all active:translate-x-1px 1px ${
                   filter === f
                     ? "bg-slate-900 text-white"
                     : "bg-white text-slate-900 hover:bg-slate-100"
