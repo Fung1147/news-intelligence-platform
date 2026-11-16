@@ -183,7 +183,6 @@ def get_news_by_entity(
     finally:
         session.close()
         
-@app.post("/api/ai/brief")
+@app.post("/api/entity-brief")
 def get_entity_brief(req: BriefRequest):
-    brief_points = generate_entity_brief(req.entity_name, req.articles)
-    return {"brief": brief_points}
+    return generate_entity_brief(req.entity_name, req.articles)

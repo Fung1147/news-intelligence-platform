@@ -205,7 +205,7 @@ def process_unprocessed_articles(limit: int = 100):
             f"\nกำลังประมวลผล AI สำหรับข่าว {len(unprocessed)} รายการ...\n"
         )
         for article in unprocessed:
-            print(f"กำลังวิเคราะห์: {article.title[:50]}...")
+            print(f"กำลังวิเคราะห์: {article.title[:100]}...")
             
             # ส่งทั้ง title และ content เข้าไปวิเคราะห์
             ai_results = analyze_article(title=article.title, content=article.content)

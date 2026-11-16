@@ -73,7 +73,7 @@ export const NewsFeedContainer: React.FC<NewsFeedContainerProps> = ({
         />
       </div>
 
-      {/* 3. พื้นที่แสดงรายการข่าว (Scrollable แยกอิสระบนจอ Desktop) */}
+      {/*(Scrollable Desktop) */}
       <div className="flex-1 overflow-y-auto pr-1 space-y-4 lg:max-h-[calc(100vh-240px)]">
         {filteredArticles.length > 0 ? (
           filteredArticles.map((item, index) => (

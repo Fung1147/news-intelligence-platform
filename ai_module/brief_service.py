@@ -1,54 +1,88 @@
 import requests
 import re
+import time
 
-def generate_entity_brief(entity_name: str, articles: list) -> list:
+def _resolve_sentiment(article: dict) -> str:
+    label = article.get("sentiment_label")
+    score = article.get("sentiment_score")
+
+    if not label:
+        return "UNPROCESSED"
+
+    clean_label = str(label).upper()
+    if isinstance(score, (int, float)):
+        return f"{clean_label} ({score:.2f})"
+    return clean_label
+
+def generate_entity_brief(entity_name: str, articles: list) -> dict:
     if not articles:
-        return ["Insufficient news articles available to generate an intelligence brief."]
+        return {
+            "bullets": ["Insufficient news articles available to generate an intelligence brief."],
+            "metrics": None
+        }
 
-    selected_articles = articles[:10]
-    # Format up to 10 recent articles as structured context
+    selected_articles = articles[:15]
     news_context = "\n".join([
-        f"- [{a.get('sentiment_label', 'NEUTRAL')}] {a.get('title', '')}: {a.get('summary', '')}"
-        for a in articles[:10]
+        f"{i+1}. [{a.get('category') or 'General'} | {_resolve_sentiment(a)}] {a.get('title', '')}: {a.get('summary') or ''}"
+        for i, a in enumerate(selected_articles)
     ])
-    
-    print(f"\n{'='*50}\n[DEBUG] Context for '{entity_name}' ({len(selected_articles)} articles):\n{news_context}\n{'='*50}\n", flush=True)
 
     prompt = f"""You are a senior News Intelligence Analyst.
-        Analyze the recent news coverage below regarding "{entity_name}" and synthesize an executive intelligence brief:
+        Analyze the recent news coverage below regarding "{entity_name}" and synthesize a comprehensive yet scannable executive intelligence brief:
 
         {news_context}
 
         Requirements:
-        1. Provide exactly 3 concise, high-impact bullet points in English.
-        2. Bullet 1 & 2: Summarize the most critical developments, strategic moves, or key events.
-        3. Bullet 3: Analyze the primary driver behind the overall sentiment (positive, negative, or mixed).
-        4. Output ONLY the 3 bullet points, one per line. Do not include any introductory or concluding remarks."""
-
+        1. Output ONLY 5 detailed, high-impact bullet points in English, one per line. No intro or conclusion.
+        2. Follow this exact labeled structure (write 2 well-crafted sentences per bullet, ~35-45 words each):
+        - **Bottom Line:** [2 sentences summarizing the core strategic narrative and overall market standing of {entity_name}]
+        - **Key Moves:** [2 sentences detailing major product launches, tech innovations, partnerships, or financial figures]
+        - **Market Context:** [2 sentences explaining competitor actions, industry shifts, and macro catalysts impacting {entity_name}]
+        - **Sentiment Driver:** [Positive / Negative / Mixed] — [2 sentences analyzing the specific positive catalysts vs. negative headwinds driving coverage]
+        - **Strategic Outlook:** [2 sentences highlighting near-term risks, competitive threats, or upcoming opportunities to watch]
+        3. Lead with concrete facts, exact product names, and numbers from the articles. Avoid vague generalizations."""
+        
+    start_time = time.perf_counter()
     try:
         response = requests.post(
             "http://localhost:1235/v1/chat/completions",
             json={
                 "model": "qwen/qwen3.8-27b",
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ],
+                "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.3,
-                "max_tokens": 4096
+                "max_tokens": 8192,
+                "reasoning_effort": "none"
             },
             timeout=600
         )
         response.raise_for_status()
-        ai_text = response.json()["choices"][0]["message"]["content"]
+        elapsed = round(time.perf_counter() - start_time, 2)
 
-        # Strip <think>...</think> blocks if reasoning output is included
-        ai_text = re.sub(r"<think>.*?</think>", "", ai_text, flags=re.DOTALL).strip()
+        data = response.json()
+        raw_content = data["choices"][0]["message"]["content"].strip()
 
-        # Parse into a clean 3-item list
-        lines = [line.strip("- •*123.").strip() for line in ai_text.split("\n") if line.strip()]
-        return lines[:3]
+        # cleaning Bullet points
+        lines = [line.strip() for line in raw_content.splitlines() if line.strip()]
+        bullets = [re.sub(r"^[-*•\d.)]+\s*", "", line) for line in lines][:5]
 
+        usage = data.get("usage", {})
+        completion_tokens = usage.get("completion_tokens", 0)
+        tps = round(completion_tokens / elapsed, 1) if elapsed > 0 else 0
+
+        return {
+            "bullets": bullets,
+            "metrics": {
+                "elapsed_seconds": elapsed,
+                "prompt_tokens": usage.get("prompt_tokens", 0),
+                "completion_tokens": completion_tokens,
+                "total_tokens": usage.get("total_tokens", 0),
+                "tokens_per_second": tps,
+                "articles_analyzed": len(selected_articles),
+                "cached": False
+            }
+        }
     except Exception as e:
-        print(f"LM Studio Error: {e}")
-        return ["Unable to connect to LM Studio. Please ensure the Local API server is running."]
-    
+        return {
+            "bullets": [f"Failed to generate brief: {str(e)}"],
+            "metrics": None
+        }
