@@ -1,6 +1,6 @@
 import React from 'react';
 import { ExternalLink, Bot, Calendar, Building2, Tag } from 'lucide-react';
-import type { Article } from '../types/news';
+import type { Article } from '../../types/news'; 
 
 interface ArticleCardProps {
   article: Article;

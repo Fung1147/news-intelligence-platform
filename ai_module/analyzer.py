@@ -10,7 +10,6 @@ from transformers import (
     pipeline,
 )
 
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data_pipeline.db import NewsArticle, SessionLocal
 

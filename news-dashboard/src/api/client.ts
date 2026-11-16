@@ -11,5 +11,5 @@ export const getArticles = () => api.get<Article[]>("/articles");
 export const getStats = () => api.get<SentimentStats>("/stats");
 
 // New api
-export const getGraphData = (limit: number = 200) =>
+export const getGraphData = (limit: number = 100) =>
   api.get<GraphData>(`/api/v1/graph?limit=${limit}`);

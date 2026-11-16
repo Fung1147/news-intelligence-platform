@@ -318,7 +318,7 @@ export const EntityGraphContainer: React.FC<EntityGraphContainerProps> = ({
 
             {loadingNews ? (
               <p className="font-bold text-gray-500 animate-pulse text-center py-4">
-                ⏳ กำลังโหลดข่าวสาร...
+                กำลังโหลดข่าวสาร...
               </p>
             ) : newsList.length > 0 ? (
               <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
@@ -335,7 +335,7 @@ export const EntityGraphContainer: React.FC<EntityGraphContainerProps> = ({
                     </p>
                     {news.publisher && (
                       <span className="inline-block mt-2 text-[10px] bg-gray-200 border border-black px-1.5 py-0.5 rounded font-mono">
-                        📌 {news.publisher}
+                        {news.publisher}
                       </span>
                     )}
                   </div>
@@ -343,7 +343,7 @@ export const EntityGraphContainer: React.FC<EntityGraphContainerProps> = ({
               </div>
             ) : (
               <div className="p-3 bg-yellow-100 border-2 border-black rounded-lg text-center font-bold text-black text-sm">
-                ❌ ไม่พบข่าวที่เกี่ยวข้องกับ Entity นี้
+                ไม่พบข่าวที่เกี่ยวข้องกับ Entity นี้
               </div>
             )}
           </div>

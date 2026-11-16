@@ -142,7 +142,7 @@ def get_sentiment_stats():
         session.close()
         
 @app.get("/api/v1/graph")
-def get_graph(limit: int = 40):
+def get_graph(limit: int = 100):
     try:
         data = get_knowledge_graph_data(limit=limit)
         return data
@@ -153,7 +153,7 @@ def get_graph(limit: int = 40):
 def get_news_by_entity(
     entity_name: str,
     entity_type: Optional[str] = None,
-    limit: int = 20
+    limit: int = 50
 ):
     session = SessionLocal()
     try:
