@@ -75,6 +75,7 @@ export function App() {
       setLoading(false);
     }
   };
+  
   useEffect(() => {
     fetchData();
   }, []);

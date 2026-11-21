@@ -119,21 +119,28 @@ def extract_ner_and_keywords(text: str, max_keywords: int = 5):
 def analyze_article(title: str = "", content: str = "") -> dict:
     """ประมวลผล Sentiment และ สรุปข่าว"""
     # --- 1. Sentiment Analysis ---
-    title_text = title or ""
-    content_text = content or ""
+    title_text = (title or "").strip()
+    content_text = (content or "").strip()
 
     if len(content_text) > 3500:
-        head_text = content_text[:2300]
-        tail_text = content_text[-1000:]
+        head_text = content_text[:2300].rsplit(" ", 1)[0]
+        tail_text = content_text[-1000:].split(" ", 1)[-1]
         combined_content = f"{head_text}\n...\n{tail_text}"
     else:
         combined_content = content_text
 
-    full_text = f"{title_text}. {combined_content}".strip()
-    truncated_text = full_text if full_text else title_text
+    # รวม Title และ Content ให้สะอาด (กันจุดซ้ำซ้อน)
+    if title_text and combined_content:
+        sep = "" if title_text.endswith((".", "!", "?")) else "."
+        truncated_text = f"{title_text}{sep} {combined_content}"
+    else:
+        truncated_text = title_text or combined_content
 
-    sentiment_input = truncated_text[:1500]
-    sentiment_result = sentiment_pipeline(sentiment_input)[0]
+    # ส่งให้ Sentiment Pipeline พร้อมบังคับ truncation=True กันทะลุ 512 tokens
+    sentiment_input = truncated_text[:1800]  # ขยายได้ถึง ~1800 chars เพราะมี truncation ช่วยตัดที่ 512 tokens
+    sentiment_result = sentiment_pipeline(
+        sentiment_input, truncation=True, max_length=512
+    )[0]
 
     label = sentiment_result["label"]
     score = round(float(sentiment_result["score"]), 4)
@@ -150,8 +157,11 @@ def analyze_article(title: str = "", content: str = "") -> dict:
         summary_ids = summarizer_model.generate(
             inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
-            max_length=60,
-            min_length=25,
+            max_length=280,          # สูงสุด 250-300 tokens
+            min_length=150,          
+            length_penalty=2.0,      # เร่งให้โมเดลพยายามยืดประโยค
+            no_repeat_ngram_size=3,  # กันโมเดลพูดวลีเดิมซ้ำเวลาถูกบีบให้เขียนยาว
+            repetition_penalty=1.2,  # เสริมการลงโทษคำซ้ำ ช่วยให้ดึงเนื้อหาส่วนอื่นมาเขียนต่อ
             num_beams=2,
             early_stopping=True,
         )
@@ -247,64 +257,3 @@ def process_unprocessed_articles(limit: int = 100):
     finally:
         db.close()
         
-def generate_entity_brief(entity_name: str, articles: list) -> list:
-    """
-    ใช้ Local ONNX Summarizer (distilbart-cnn-12-6) ร่วมกับการวิเคราะห์สถิติ
-    """
-    if not articles:
-        return ["No sufficient news articles available for analysis."]
-
-    # รวบรวมเนื้อหาข่าว (ใช้ summary ถ้ามี ไม่งั้นใช้ title) สูงสุด 15 ข่าวเพื่อไม่ให้เกิน 1024 tokens
-    texts = []
-    for a in articles[:15]:
-        content = a.get("summary") or a.get("title") or ""
-        if content.strip():
-            texts.append(content.strip())
-
-    combined_text = " ".join(texts)
-
-    # 2. ใช้โมเดล ONNX Summarizer สกัดใจความสำคัญรวม (Executive Summary)
-    ai_overview = ""
-    if combined_text:
-        try:
-            inputs = summarizer_tokenizer(
-                combined_text,
-                max_length=1024,
-                truncation=True,
-                return_tensors="pt"
-            )
-            summary_ids = summarizer_model.generate(
-                inputs["input_ids"],
-                num_beams=4,
-                min_length=40,
-                max_length=130,
-                early_stopping=True
-            )
-            ai_overview = summarizer_tokenizer.decode(summary_ids[0], skip_special_tokens=True)
-        except Exception as e:
-            print(f"Summarizer error: {e}")
-            ai_overview = texts[0] if texts else "Unable to generate summary."
-
-    # 3. วิเคราะห์หมวดหมู่หลัก (Dominant Category)
-    categories = [a.get("category") for a in articles if a.get("category")]
-    top_category = Counter(categories).most_common(1)[0][0] if categories else "General"
-
-    # 4. วิเคราะห์แนวโน้มอารมณ์ข่าวและพาดหัวเด่น (Sentiment & Key Driver)
-    pos_articles = [a for a in articles if a.get("sentiment_label") == "POSITIVE"]
-    neg_articles = [a for a in articles if a.get("sentiment_label") == "NEGATIVE"]
-
-    if len(neg_articles) > len(pos_articles):
-        dominant_driver = neg_articles[0].get("title", "")
-        sentiment_insight = f"Coverage leans negative ({len(neg_articles)}/{len(articles)} articles), primarily driven by reports such as: \"{dominant_driver}\""
-    elif len(pos_articles) > len(neg_articles):
-        dominant_driver = pos_articles[0].get("title", "")
-        sentiment_insight = f"Coverage leans positive ({len(pos_articles)}/{len(articles)} articles), highlighted by developments like: \"{dominant_driver}\""
-    else:
-        sentiment_insight = f"Coverage is balanced between positive and negative perspectives across {len(articles)} recent articles."
-
-    # ส่งกลับเป็น List 3 ประเด็นสำคัญ
-    return [
-        f"Key Developments: {ai_overview}",
-        f"Primary Focus Area: Majority of {entity_name}'s recent coverage is concentrated in '{top_category}'.",
-        f"Sentiment Driver: {sentiment_insight}"
-    ]

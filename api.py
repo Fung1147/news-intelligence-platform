@@ -14,7 +14,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# (ให้ React Port 5173 เรียกใช้ API ได้)
+# ให้ React Port 5173 เรียกใช้ API ได้
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],

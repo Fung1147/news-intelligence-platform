@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import type { ForceGraphMethods } from "react-force-graph-2d";
 import { GraphControls } from "./GraphControls";
-import { EntityDetailModel, type EntityDetail } from "./EntityDetailModel";
 import * as d3 from "d3-force";
 import { Share2 } from "lucide-react";
 
@@ -37,16 +36,11 @@ export const EntityGraphContainer: React.FC<EntityGraphContainerProps> = ({
 }) => {
   const fgRef = useRef<ForceGraphMethods<any, any>>(undefined);
   const [selectedType, setSelectedType] = useState<string>("ALL");
-  const [activeEntityDetail, setActiveEntityDetail] =
-    useState<EntityDetail | null>(null);
 
   const [hoverNode, setHoverNode] = useState<GraphNode | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
 
-  const [newsList, setNewsList] = useState<any[]>([]);
-  const [loadingNews, setLoadingNews] = useState<boolean>(false);
-
-  // กำหนดโทนสีให้เข้ากับ Neo-brutalism Dashboard
+  // Neo-brutalism Dashboard
   const getNodeColor = (type: string) => {
     switch (type) {
       case "ORG":
@@ -81,7 +75,6 @@ export const EntityGraphContainer: React.FC<EntityGraphContainerProps> = ({
     fgRef.current?.zoom(fgRef.current.zoom() / 1.3, 300);
   const handleResetZoom = () => {
     fgRef.current?.zoomToFit(400, 40);
-    setActiveEntityDetail(null);
   };
 
   // คำนวณ Degree Centrality (นับเส้นเชื่อมของแต่ละ Node)
@@ -133,8 +126,6 @@ export const EntityGraphContainer: React.FC<EntityGraphContainerProps> = ({
   const handleNodeClick = async (node: GraphNode) => {
     console.log("Clicked Node:", node);
     setSelectedNode(node);
-    setLoadingNews(true);
-    setNewsList([]);
 
     const entityName = node.label || node.id;
 
@@ -144,15 +135,13 @@ export const EntityGraphContainer: React.FC<EntityGraphContainerProps> = ({
       );
       const data = await res.json();
       console.log("Fetched News Data:", data);
-      setNewsList(data);
       if (onSelectEntity) {
         onSelectEntity(node, data);
       }
     } catch (error) {
       console.error("Error fetching news:", error);
-      setNewsList([]);
     } finally {
-      setLoadingNews(false);
+      false;
     }
   };
 
@@ -298,62 +287,6 @@ export const EntityGraphContainer: React.FC<EntityGraphContainerProps> = ({
           }}
         />
 
-        {/* กล่องแสดงรายการข่าวเมื่อคลิกเลือก Node */}
-        {selectedNode && (
-          <div className="mt-4 bg-white border-3 border-black p-4 rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-            <div className="flex justify-between items-center mb-3 border-b-2 border-black pb-2">
-              <h3 className="font-extrabold text-lg text-black">
-                📰 ข่าวสารของ:{" "}
-                <span className="bg-yellow-300 px-2 py-0.5 rounded border border-black">
-                  {selectedNode.label || selectedNode.id}
-                </span>
-              </h3>
-              <button
-                onClick={() => setSelectedNode(null)}
-                className="font-bold border-2 border-black px-2 py-0.5 rounded hover:bg-black hover:text-white transition-colors"
-              >
-                ✕ ปิด
-              </button>
-            </div>
-
-            {loadingNews ? (
-              <p className="font-bold text-gray-500 animate-pulse text-center py-4">
-                กำลังโหลดข่าวสาร...
-              </p>
-            ) : newsList.length > 0 ? (
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                {newsList.map((news: any, idx: number) => (
-                  <div
-                    key={news.url || `news-${idx}`}
-                    className="p-3 bg-gray-50 border-2 border-black rounded-lg"
-                  >
-                    <h4 className="font-bold text-sm text-black">
-                      {news.title}
-                    </h4>
-                    <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-                      {news.content || news.summary}
-                    </p>
-                    {news.publisher && (
-                      <span className="inline-block mt-2 text-[10px] bg-gray-200 border border-black px-1.5 py-0.5 rounded font-mono">
-                        {news.publisher}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-3 bg-yellow-100 border-2 border-black rounded-lg text-center font-bold text-black text-sm">
-                ไม่พบข่าวที่เกี่ยวข้องกับ Entity นี้
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Modal ข้อมูลมุมขวา */}
-        <EntityDetailModel
-          entity={activeEntityDetail}
-          onClose={() => setActiveEntityDetail(null)}
-        />
       </div>
     </div>
   );

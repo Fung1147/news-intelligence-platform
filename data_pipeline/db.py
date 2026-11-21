@@ -109,7 +109,7 @@ def save_articles_to_db(articles: list[dict]):
     finally:
         db.close()
 
-def get_knowledge_graph_data(limit: int = 50):
+def get_knowledge_graph_data(limit: int = 100):
     db = SessionLocal()
     try:
         # ดึงข้อมูล Entities (Nodes)
@@ -150,7 +150,7 @@ def get_knowledge_graph_data(limit: int = 50):
                 AND ae1.entity_id < ae2.entity_id
             WHERE ae1.entity_id IN :node_ids AND ae2.entity_id IN :node_ids
             GROUP BY ae1.entity_id, ae2.entity_id
-            HAVING COUNT(DISTINCT ae1.article_url) > 1;
+            HAVING COUNT(DISTINCT ae1.article_url) > 4;
         """).bindparams(bindparam("node_ids", expanding=True))
         
         # ส่งค่า node_ids ในรูปแบบ list
