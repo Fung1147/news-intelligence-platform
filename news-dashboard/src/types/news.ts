@@ -18,3 +18,18 @@ export interface SentimentStats {
   unprocessed_count: number;
   category_stats?: Record<string, number>;
 }
+
+export interface BriefMetrics {
+  elapsed_seconds: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  tokens_per_second: number;
+  articles_analyzed: number;
+  cached?: boolean;
+}
+
+export interface BriefResult {
+  bullets: string[];
+  metrics: BriefMetrics | null;
+}

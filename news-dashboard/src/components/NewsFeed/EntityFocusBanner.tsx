@@ -1,19 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-
-interface BriefMetrics {
-  elapsed_seconds: number;
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-  tokens_per_second: number;
-  articles_analyzed: number;
-  cached?: boolean;
-}
-
-interface BriefResult {
-  bullets: string[];
-  metrics: BriefMetrics | null;
-}
+import type { BriefResult } from "../../types/news";
+import { createEntityBrief } from "../../api/client";
 
 interface EntityFocusBannerProps {
   selectedEntity?: string;
@@ -79,12 +66,8 @@ export const EntityFocusBanner: React.FC<EntityFocusBannerProps> = ({
     setLoading(true);
     setBriefData(null);
     try {
-      const res = await fetch("http://localhost:8000/api/entity-brief", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entity_name: activeEntity, articles }),
-      });
-      const data: BriefResult = await res.json();
+      const res = await createEntityBrief(activeEntity, articles);
+      const data: BriefResult = res.data;
       setBriefData(data);
       if (data.bullets && data.bullets.length > 0 && data.metrics) {
         cacheRef.current[activeEntity] = data;

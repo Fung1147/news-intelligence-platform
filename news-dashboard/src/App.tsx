@@ -5,16 +5,18 @@ import { Header } from "./components/Layout/Header";
 import {
   EntityGraphContainer,
   type GraphData,
+  type GraphNode,
 } from "./components/KnowledgeGraph/EntityGraphContainer";
-import { NewsFeedContainer } from "./components/์NewsFeed/NewsFeedContainer";
+import { NewsFeedContainer } from "./components/NewsFeed/NewsFeedContainer";
+import type { Article } from "./types/news";
 
 export function App() {
-  const [articles, setArticles] = useState<any[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filter, setFilter] = useState<"ALL" | "POSITIVE" | "NEGATIVE">("ALL");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
-  const [selectedNode, setSelectedNode] = useState<any | null>(null);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
 
   const [graphData, setGraphData] = useState<GraphData>({
     nodes: [],
@@ -30,7 +32,7 @@ export function App() {
   ];
 
   // แก้ไข handler รับข้อมูลจาก Graph
-  const handleSelectEntity = (node: any, newsData?: any[]) => {
+  const handleSelectEntity = (node: GraphNode, newsData?: Article[]) => {
     setSelectedNode(node);
 
     if (node) {
@@ -75,7 +77,7 @@ export function App() {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchData();
   }, []);

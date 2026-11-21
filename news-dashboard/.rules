@@ -1,0 +1,14 @@
+# Project: news-dashboard (Frontend)
+- **Tech Stack:** React, TypeScript, Vite, Tailwind CSS v4, Axios, react-force-graph-2d
+- **Architecture:**
+  - `src/App.tsx`: Root component holding global state (articles, search, filters, selectedNode) and layout split.
+  - `src/api/client.ts`: Axios API client (`getArticles()`, `getStats()`, `getGraphData()`).
+  - `src/types/news.ts`: TypeScript interfaces (`Article`, `SentimentStats`).
+  - `src/components/Layout/Header.tsx`: Search input and refresh button.
+  - `src/components/KnowledgeGraph/`: `EntityGraphContainer.tsx` (ForceGraph2D) and `GraphControls.tsx`.
+  - `src/componentsNewsFeed/` : `NewsFeedContainer.tsx`, `EntityFocusBanner.tsx` (POST `/api/entity-brief`), `ArticleCard.tsx`, `CategoryFilter.tsx`.
+
+# Rules for AI Agent
+- **Ignore Directories:** NEVER read or scan `node_modules/`, `dist/`, `.git/`, or `package-lock.json`.
+- **Code Style:** Use functional React components with strict TypeScript types (avoid `any`). Keep Tailwind CSS v4 utility classes clean.
+- **Safety & Token Efficiency:** Modify only the specific files requested. Do not rewrite entire files if only a small section needs updating.

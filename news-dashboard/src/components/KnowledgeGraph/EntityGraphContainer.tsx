@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import type { ForceGraphMethods } from "react-force-graph-2d";
 import { GraphControls } from "./GraphControls";
+import { getNewsByEntity } from "../../api/client";
 import * as d3 from "d3-force";
 import { Share2 } from "lucide-react";
 
@@ -130,13 +131,10 @@ export const EntityGraphContainer: React.FC<EntityGraphContainerProps> = ({
     const entityName = node.label || node.id;
 
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/news/by-entity?entity_name=${encodeURIComponent(entityName)}`,
-      );
-      const data = await res.json();
-      console.log("Fetched News Data:", data);
+      const res = await getNewsByEntity(entityName);
+      console.log("Fetched News Data:", res.data);
       if (onSelectEntity) {
-        onSelectEntity(node, data);
+        onSelectEntity(node, res.data);
       }
     } catch (error) {
       console.error("Error fetching news:", error);
